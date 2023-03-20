@@ -1,22 +1,51 @@
-`pbwt - wildcards`
----
-# Pbwt
+# `Wild-pBWT`
 
-# Blocks
+A PBWT-based algorithm for identifying all Maximal Perfect Haplotype Blocks with Wildcards (MPHBw).
 
-# Haplotype Gen
-Generate random 0-1 data in two output files: one with gaps (*) and one ground-truth file (with no gaps).
+## Build
+SDSL by @SimonGog is required to build the project. More information available at [GitHub Repo](https://github.com/simongog/sdsl-lite)
+Run
+```
+make
+```
+inside the main folder, to build `pbtw`, `gen`, and `err`.
 
-# TODO
-- bitvector per ogni carattere dell'alfabeto
-- durante la computazione dei blocchi, prendo il carattere successivo rispetto alla colonna dei prefissi ordinati
-    - se ha un valore, cerco nel rispettivo bitvector
-    - altrimenti, DEVO cercare in tutti i bit vector il fatto che sia "coerente/aperto" per almeno uno dei SIGMA-bitvector
-    - se per tutti i bit vector ho "differenza" \not \equal 0 allora il blocco chiude.
-    
+### `pbwt`
+Run
+```
+make pbwt
+```
+to build the executable for `pbwt` only.
+
+The `pbwt` binary under the `bin` subfolder computes all the MPHBw from a given input, with the extended pBWT
+```sh
+./bin/gen -f <filename> -a <t-alleles> -c <y:count blocks> -v <verbose output> -o <y:compute blocks> -b <block_size> -g <buffer_size>
+```
+If ran with `-o` flag, blocks will be outputted to std:cout.
+If ran with `-c` flag, blocks wont be outputted, only counted.
+To specify a block_size, run with -o (-c not permitted)
 
 
-- aggiungere PARAMETRO grandezza blocco
+### `gen`
+Run
+```
+make gen
+```
+to build the executable for `gen` only.
+The `gen` binary under the `bin` subfolder generates a matrix M x N with a specified missing data rate (if given)
+```sh
+./bin/gen <save_directory> <t-alleles> <haplotypes#> <SNPs#> <error_rate> 
+```
 
-----
-AUDIO
+## 'err`
+Run
+```
+make err
+```
+to build the executable for `err` only.
+The `err` binary under the `bin` subfolder generates a matrix from an input, inserting <error_rate>\% wildcards
+```sh
+./bin/gen <out_filename> <input_matrix> <error_rate> 
+```
+
+
