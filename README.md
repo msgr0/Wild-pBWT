@@ -8,44 +8,37 @@ Run
 ```
 make
 ```
-inside the main folder, to build `pbtw`, `gen`, and `err`.
+inside the main folder, to build `wild-pbtw`, `gen`, and `err`.
 
-### `pbwt`
-Run
-```
-make pbwt
-```
-to build the executable for `pbwt` only.
+### `wild-pbwt`
 
-The `pbwt` binary under the `bin` subfolder computes all the MPHBw from a given input, with the extended pBWT
+The `wild-pbwt` binary under the `bin` subfolder computes all the maximal haplotype blocks with wildcards from a given input, with the extended pBWT
+
 ```sh
-./bin/gen -f <filename> -a <t-alleles> -c <y:count blocks> -v <verbose output> -o <y:compute blocks> -b <block_size> -g <buffer_size>
+./bin/wild-pbwt -f <filename> -a <t-alleles> [-c|-o] [-v <verbose output>] [-b <block_size>] [-g <buffer_size>]
 ```
-If ran with `-o` flag, blocks will be outputted to std:cout.
-If ran with `-c` flag, blocks wont be outputted, only counted.
-To specify a block_size, run with -o (-c not permitted)
+where:
+- `<filename>` is the input file containing the haplotype panel in ASCII format where each line represents a variation site and each column is a single haplotype (i.e., similar to VCFs). Wildcards are represented with character `*`.
+- `<t-alleles>` is the alphabet size (not counting `*`), i.e., the maximum number of alleles in a single site
+
+If ran with `-o` flag, blocks will be output to standard output.
+If ran with `-c` flag, blocks will not be output, only counted.
+To specify a block_size, run with `-o` (`-c` not permitted)
 
 
 ### `gen`
-Run
-```
-make gen
-```
-to build the executable for `gen` only.
-The `gen` binary under the `bin` subfolder generates a matrix M x N with a specified missing data rate (if given)
+
+The `gen` binary under the `bin` subfolder generates a matrix M x N with a specified wildcard data rate (if given)
 ```sh
 ./bin/gen <save_directory> <t-alleles> <haplotypes#> <SNPs#> <error_rate> 
 ```
 
-## 'err`
-Run
-```
-make err
-```
-to build the executable for `err` only.
-The `err` binary under the `bin` subfolder generates a matrix from an input, inserting <error_rate>\% wildcards
+## `err`
+
+The `err` binary under the `bin` subfolder generates a matrix from an input, inserting a wildcard with probability <wild_rate>\% at each position.
+
 ```sh
-./bin/gen <out_filename> <input_matrix> <error_rate> 
+./bin/gen <out_filename> <input_matrix> <wild_rate>
 ```
 
 
