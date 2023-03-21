@@ -17,13 +17,6 @@ bool fast = false;
 bool output_blocks = false;
 int_t minimal_block_size = 2;
 int_t with_gaps = 1;
-int_t max(int_t a, int_t b)
-{
-    if (a > b)
-        return a;
-    else
-        return b;
-}
 
 void see(const std::vector<int_t> m)
 {
@@ -400,9 +393,9 @@ public:
 
         for (int_t i = 0; i < alphabet_size; i++)
         {
-            for (int_t j = 0; j < a[i].size(); j++)
+            for (size_t j = 0; j < a[i].size(); j++)
                 ak.emplace_back(a[i][j]);
-            for (int_t j = 0; j < d[i].size(); j++)
+            for (size_t j = 0; j < d[i].size(); j++)
                 dk.emplace_back(d[i][j]);
         }
         // assert(size_curr == ak.size());
@@ -427,11 +420,11 @@ public:
                         started = true;
                         ac.emplace_back(ak[i]);
                         dc.emplace_back(dk[i]);
-                        max_d = max(dk[i + 1], max_d);
+                        max_d = std::max(dk[i + 1], max_d);
                     }
                     else
                     {
-                        max_d = max(dk[i + 1], max_d);
+                        max_d = std::max(dk[i + 1], max_d);
                         this->collapsed_rows_count += 1;
                         removed_count += 1;
                     }
@@ -483,11 +476,11 @@ public:
                         begin = ak[i];
                         ac.emplace_back(begin);
                         dc.emplace_back(upper_d);
-                        max_d = max(dk[i + 1], max_d);
+                        max_d = std::max(dk[i + 1], max_d);
                     }
                     else
                     {
-                        max_d = max(dk[i + 1], max_d);
+                        max_d = std::max(dk[i + 1], max_d);
                         this->collapsed_rows_count += 1;
                         removed_count += 1;
                     }

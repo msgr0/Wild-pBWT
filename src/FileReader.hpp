@@ -149,9 +149,6 @@ public:
         str2.seekg(0);
         istart = str2;
         //
-        int_t fin(0);
-        int_t n_line(0);
-        int_t i(0);
         //
         istreambuf_iterator<char> it;
 
