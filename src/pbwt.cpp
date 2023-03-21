@@ -1,6 +1,5 @@
-#include "./FileReader.hpp"
+#include "FileReader.hpp"
 #include <iostream>
-#include <ranges>
 #include <vector>
 #include <assert.h>
 #include <sdsl/bit_vectors.hpp>
