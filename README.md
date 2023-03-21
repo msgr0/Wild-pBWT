@@ -3,7 +3,8 @@
 A PBWT-based algorithm for identifying all Maximal Perfect Haplotype Blocks with Wildcards (MPHBw).
 
 ## Build
-SDSL by @SimonGog is required to build the project. More information available at [GitHub Repo](https://github.com/simongog/sdsl-lite)
+SDSL by @SimonGog is required to build the project. More information available at [GitHub Repo](https://github.com/simongog/sdsl-lite).
+
 Run
 ```
 make
@@ -35,7 +36,7 @@ The `gen` binary under the `bin` subfolder generates a matrix M x N with a speci
 
 ## `err`
 
-The `err` binary under the `bin` subfolder generates a matrix from an input, inserting a wildcard with probability <wild_rate>\% at each position.
+The `err` binary under the `bin` subfolder generates a matrix from an input, inserting a wildcard with probability `wild_rate`\% at each position.
 
 ```sh
 ./bin/gen <out_filename> <input_matrix> <wild_rate>
