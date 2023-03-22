@@ -283,12 +283,23 @@ public:
                     }
                     n--;
 
+                    // std::unordered_set<int_t> b;
+                    // for (int_t a = m; a <= n; a++)
+                    // {
+                    //     b.insert(ak[a]);
+                    // }
+                    // if (b.size() < m - n)
+                    // {
+                    //     // devo collassare quelle in piu.
+                    // }
+
                     if (next_allele != 250)
                     {
+
                         int_t width = k - dk[i] + 1;
                         int_t diff;
                         diff = rank[next_allele](n + 1) - rank[next_allele](m);
-                        if (diff != 0 || k == N - 1)
+                        if (diff != 0 || k >= N - 1)
                         {
                             dk_sup[m] = dk[i];
                             if (fast)
@@ -305,6 +316,9 @@ public:
                                 int_t range = b.size();
                                 if ((width)*range >= minimal_block_size)
                                 {
+                                    // add block B i j to set
+                                    //  at the end of the block find loop, adjust the divergence
+                                    //
                                     total_blocks++;
                                     if (output_blocks)
                                     {
@@ -359,6 +373,11 @@ public:
                 {
                     p[l] = dk[i];
                 }
+                // if (dk[i] <= p[l])
+                // {
+                //     // non aggiorno p[l] perche \`e piu grande di dk[i]
+                //     //
+                // }
             }
             if (allele != 250)
             {
@@ -457,7 +476,6 @@ public:
                 this->collapsed_rows_count += 1;
             }
         }
-
         // better collapse -- miglioramento: collasso tutto tranne d[i]  se d[i+j] > max{d[i+1}, d[i+j-1]}
         if (true) // COLLAPSE PROCEDURE
         {
@@ -467,6 +485,80 @@ public:
             int_t begin = 0;
             for (int_t i = 0; i < size_curr - 1; i++)
             {
+                if (ak[i] == ak[i + 1])
+                {
+                    if (!started) // inizio a formare il blocco
+                    {
+                        started = true;
+                        upper_d = dk[i];
+                        begin = ak[i];
+                        ac.emplace_back(begin);
+                        dc.emplace_back(upper_d);
+                        max_d = std::max(dk[i + 1], max_d);
+                    }
+                    else
+                    {
+                        max_d = std::max(dk[i + 1], max_d);
+                        this->collapsed_rows_count += 1;
+                        removed_count += 1;
+                    }
+                }
+                else
+                {
+                    if (started)
+                    {
+                        if (dk[i + 1] >= max_d)
+                        {
+                            this->collapsed_rows_count += 1;
+                        }
+                        else
+                        {
+                            ac.emplace_back(ak[i]);
+                            dc.emplace_back(max_d);
+                        }
+                        this->collapse_count += 1;
+                        max_d = 0;
+                        started = false;
+                    }
+                    else
+                    {
+                        ac.emplace_back(ak[i]);
+                        dc.emplace_back(dk[i]);
+                    }
+                }
+            }
+
+            if (!started)
+            {
+                ac.emplace_back(ak[size_curr - 1]);
+                dc.emplace_back(dk[size_curr - 1]);
+            }
+            else
+            {
+                this->collapsed_rows_count += 1;
+            }
+
+            ak.clear();
+            dk.clear();
+            this->ak = ac;
+            this->dk = dc;
+        }
+
+        if (false)
+        { // enanched collapse: collapse multiple row if they are equal
+            bool started = false;
+            int_t max_d = 0;
+            int_t upper_d = 0;
+            int_t begin = 0;
+            for (int_t i = 0; i < size_curr - 1; i++)
+            {
+                // se formo un blocco per cui valgono le precedenti, del collasso normale,
+                // allora salvo solo la prima e l'ultima riga
+                // questo vale perche verranno successivamente collassate ...
+                // quindi PRE-COLLASSO... se posso chiudere un blocco fatto cosi' tolgo gli altri .. il fatto 'e toglierli quando sono aperti
+
+                // inizio a trovare un blocco contiguo non chiuso oppure da chiudere
+
                 if (ak[i] == ak[i + 1])
                 {
                     if (!started) // inizio a formare il blocco
@@ -617,7 +709,7 @@ int main(int argc, char **argv)
 
         if (j % (int(columns / 1000) + 1) == 0)
         {
-            std::cerr << "\rk:" << j << " #blocks: " << pbwt.get_total_blocks() << " percent: " << (j * 100) / columns << "%" << std::flush;
+            std::cerr << "\rk:" << j << " #blocks: " << pbwt.get_total_blocks() << " current SIZE " << pbwt.get_curr_ak().size() << " percent: " << (j * 100) / columns << "%" << std::flush;
         }
 
         j++;
@@ -625,7 +717,7 @@ int main(int argc, char **argv)
         pbwt.next(ni);
         ni = file.next();
         pbwt.gap_blocks();
-        pbwt.print_at_k(query);
+        // pbwt.print_at_k(query);
     }
     std::cerr << "\rk:" << j << " #blocks: " << pbwt.get_total_blocks() << " percent: " << (j * 100) / columns << "%" << std::flush;
     pbwt.see();
