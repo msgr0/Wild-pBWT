@@ -1,0 +1,8 @@
+.depend
+bin/debug-wild-pbwt
+bin/err
+bin/gen
+bin/wild-pbwt
+src/hap_gen.o
+src/hap_wild.o
+src/pbwt.o

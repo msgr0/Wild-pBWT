@@ -1,28 +1,36 @@
-all: pbwt
-debug: debug-pbwt
-#-DNDEBUG
-SDSL:= -I ~/include -L ~/lib
-SDSLPOST:= -lsdsl
-FLAGS:= -Ofast $(SDSL)
-DEFLAGS:= -DDEBUG -Ofast -Wall
-FLAGSHAPLO:= -Ofast -std=c++11
+.PHONY: all wild-pbwt gen err clean depend
 
-old: src/pbwt-old.cpp src/MatrixReader.hpp
-	c++ $(FLAGS) src/pbwt-old.cpp -o bin/old $(SDSLPOST)
-new: src/pbwt-new.cpp src/MatrixReader.hpp
-	c++ $(FLAGS) src/pbwt-new.cpp -o bin/new $(SDSLPOST)
-gen: src/hap_gen.cpp
-	c++ $(FLAGS) src/hap_gen.cpp -o bin/gen 
-err: src/hap_wild.cpp
-	c++ $(FLAGS) src/hap_wild.cpp -o bin/err
-pbwt: src/pbwt.cpp src/FileReader.hpp
-	c++ $(FLAGS) src/pbwt.cpp -o bin/pbwt $(SDSLPOST)
-debug-pbwt: src/pbwt.cpp src/MatrixReader.hpp
-	c++ $(DEFLAGS) src/pbwt.cpp -o bin/pbwt
+all: wild-pbwt gen err
+wild-pbwt: bin/wild-pbwt
+gen: bin/gen
+err: bin/err
+
+CXXFLAGS ?= -O2 -march=native
+
+LDLIBS += -lsdsl
+
+
+SRCS=src/hap_gen.cpp src/hap_wild.cpp src/pbwt.cpp
+
+bin/gen: src/hap_gen.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
+bin/err: src/hap_wild.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
+bin/wild-pbwt: src/pbwt.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
+bin/debug-wild-pbwt: src/pbwt.cpp
+	$(CXX) $(DEBUG_CXXFLAGS) $(DEBUG_CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
+
 clean:
-	rm bin/*
-hap: src/haplotype-pbwt-lite.cpp
-	g++ $(FLAGSHAPLO) src/haplotype-pbwt-lite.cpp -o bin/haplotype-pbwt-lite
+	$(RM) src/*.o bin/* .depend
 
+depend: .depend
 
+.depend: $(SRCS)
+	$(RM) ./.depend
+	$(CXX) $(CPPFLAGS) -MM $^ >>./.depend;
 
+include .depend
