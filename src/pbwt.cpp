@@ -436,9 +436,9 @@ public:
 
 void usage()
 {
-    std::cerr << "Usage: ./pbwt -a <alphabet_size> -f <filename>";
+    std::cerr << "Usage: ./bin/wild-pbwt -a <alphabet_size> -f <filename>";
     std::cerr << "-c y <count max blocks> -o y <out_blocks to std_out> -b <min block size> -g <buffer_size:512> -v y <verbose> \n";
-    std::cerr << "Example: ./pbwt -a 2 -f data/hap_gen_1500_200000.txt -c y \n";
+    std::cerr << "Example: ./bin/wild-pbwt -a 3 -f paper_wild -o y > paper_wild_out.txt \n";
     exit(0);
 }
 
@@ -496,11 +496,12 @@ int main(int argc, char **argv)
         std::cerr << "alphabet_size is too small\n";
         exit(0);
     }
+
     // bool gaps = (with_gaps == 0) ? false : true;
     std::cerr << "Running with alphabet: " << std::to_string(alphabet_size)
-              << "\nwith buffer size: " << std::to_string(buffer_size)
               << "\nwith minimal blocksize: " << std::to_string(minimal_block_size)
-              << "\non file: " << filename << "\n";
+              << "\non file: " << filename
+              << "\nwith buffer size: " << std::to_string(buffer_size) << "\n";
 
     LR_file_hap file(filename, buffer_size);
 

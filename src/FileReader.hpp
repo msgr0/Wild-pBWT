@@ -1,5 +1,8 @@
 #ifndef __FILE_READER_HPP__
 #define __FILE_READER_HPP__
+
+#define LIMITSIZE 20000
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -25,7 +28,6 @@
 using namespace std;
 
 typedef uint8_t allele_t;
-// typedef long long int allele_t;
 typedef long long int int_t;
 
 class LR_file_hap
@@ -99,8 +101,8 @@ public:
 
         struct rlimit limit;
 
-        limit.rlim_cur = 20000;
-        limit.rlim_max = 20000;
+        limit.rlim_cur = LIMITSIZE;
+        limit.rlim_max = LIMITSIZE;
 
         if (setrlimit(RLIMIT_NOFILE, &limit) != 0)
         {
@@ -125,7 +127,11 @@ public:
         char _buffer[BufferSize_big];
         str2.rdbuf()->pubsetbuf(_buffer, BufferSize_big);
         str2.open(filename.c_str(), ifstream::in);
-
+        if (!str2.is_open())
+        {
+            cerr << "Error: file " << filename << " not found" << endl;
+            exit(1);
+        }
         istreambuf_iterator<char> istart(str2);
         istreambuf_iterator<char> iend;
 
@@ -168,4 +174,5 @@ public:
         str2.close();
     }
 };
+
 #endif //__FILE_READER_HPP__
