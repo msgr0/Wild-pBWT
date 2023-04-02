@@ -8,7 +8,6 @@
 using namespace sdsl;
 
 typedef uint8_t allele_t;
-// typedef long long int int_t;
 typedef long long int int_t;
 
 // globals
@@ -16,7 +15,6 @@ bool verbose = false;
 bool fast = false;
 bool output_blocks = false;
 int_t minimal_block_size = 2;
-int_t with_gaps = 1;
 
 void see(const std::vector<int_t> m)
 {
@@ -53,9 +51,7 @@ private:
 public:
     PbwtOrder(allele_t *r, int_t lines, int_t columns, allele_t alphabet_size)
     {
-        // this->file = file_in;
         k = 0;
-        // size = lines;
         this->alphabet_size = alphabet_size;
         N = columns;
         M = lines;
@@ -366,75 +362,70 @@ public:
         ac.reserve(size_curr);
         dc.reserve(size_curr);
 
-        // insert a flag for no collapse
-
-        if (true) // COLLAPSE PROCEDURE
+        bool started = false;
+        int_t max_d = 0;
+        int_t upper_d = 0;
+        int_t begin = 0;
+        for (int_t i = 0; i < size_curr - 1; i++)
         {
-            bool started = false;
-            int_t max_d = 0;
-            int_t upper_d = 0;
-            int_t begin = 0;
-            for (int_t i = 0; i < size_curr - 1; i++)
+            if (ak[i] == ak[i + 1])
             {
-                if (ak[i] == ak[i + 1])
+                if (!started)
                 {
-                    if (!started)
-                    {
-                        started = true;
-                        upper_d = dk[i];
-                        begin = ak[i];
-                        ac.emplace_back(begin);
-                        dc.emplace_back(upper_d);
-                        max_d = max(dk[i + 1], max_d);
-                    }
-                    else
-                    {
-                        max_d = max(dk[i + 1], max_d);
-                        this->collapsed_rows_count += 1;
-                        removed_count += 1;
-                    }
+                    started = true;
+                    upper_d = dk[i];
+                    begin = ak[i];
+                    ac.emplace_back(begin);
+                    dc.emplace_back(upper_d);
+                    max_d = max(dk[i + 1], max_d);
                 }
                 else
                 {
-                    if (started)
-                    {
-                        if (upper_d == max_d)
-                        {
-                            this->collapsed_rows_count += 1;
-                        }
-                        else
-                        {
-
-                            ac.emplace_back(ak[i]);
-                            dc.emplace_back(max_d);
-                        }
-                        this->collapse_count += 1;
-                        max_d = 0;
-                        started = false;
-                    }
-                    else
-                    {
-                        ac.emplace_back(ak[i]);
-                        dc.emplace_back(dk[i]);
-                    }
+                    max_d = max(dk[i + 1], max_d);
+                    this->collapsed_rows_count += 1;
+                    removed_count += 1;
                 }
-            }
-
-            if (!started)
-            {
-                ac.emplace_back(ak[size_curr - 1]);
-                dc.emplace_back(dk[size_curr - 1]);
             }
             else
             {
-                this->collapsed_rows_count += 1;
-            }
+                if (started)
+                {
+                    if (upper_d == max_d)
+                    {
+                        this->collapsed_rows_count += 1;
+                    }
+                    else
+                    {
 
-            ak.clear();
-            dk.clear();
-            this->ak = ac;
-            this->dk = dc;
+                        ac.emplace_back(ak[i]);
+                        dc.emplace_back(max_d);
+                    }
+                    this->collapse_count += 1;
+                    max_d = 0;
+                    started = false;
+                }
+                else
+                {
+                    ac.emplace_back(ak[i]);
+                    dc.emplace_back(dk[i]);
+                }
+            }
         }
+
+        if (!started)
+        {
+            ac.emplace_back(ak[size_curr - 1]);
+            dc.emplace_back(dk[size_curr - 1]);
+        }
+        else
+        {
+            this->collapsed_rows_count += 1;
+        }
+
+        ak.clear();
+        dk.clear();
+        this->ak = ac;
+        this->dk = dc;
 
         if (verbose)
         {
@@ -445,8 +436,9 @@ public:
 
 void usage()
 {
-    std::cerr << "Usage: ./pbwt <alphabet_size> <filename>\n";
-    std::cerr << "Example: ./pbwt -a 2 -f data/hap_gen_1500_200000.txt\n";
+    std::cerr << "Usage: ./pbwt -a <alphabet_size> -f <filename>";
+    std::cerr << "-c y <count max blocks> -o y <out_blocks to std_out> -b <min block size> -g <buffer_size:512> -v y <verbose> \n";
+    std::cerr << "Example: ./pbwt -a 2 -f data/hap_gen_1500_200000.txt -c y \n";
     exit(0);
 }
 
@@ -455,7 +447,7 @@ int main(int argc, char **argv)
     int ch;
     std::string filename;
     allele_t alphabet_size;
-    int_t buffer_size = 4096 * 2;
+    int_t buffer_size = 512;
 
     while ((ch = getopt(argc, argv, "f:a:c:o:v:g:b:")) != -1)
     {
@@ -506,6 +498,7 @@ int main(int argc, char **argv)
     }
     // bool gaps = (with_gaps == 0) ? false : true;
     std::cerr << "Running with alphabet: " << std::to_string(alphabet_size)
+              << "\nwith buffer size: " << std::to_string(buffer_size)
               << "\nwith minimal blocksize: " << std::to_string(minimal_block_size)
               << "\non file: " << filename << "\n";
 
