@@ -5,26 +5,27 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 4 && argc != 5)
+    if (argc != 5 && argc != 6)
     {
-        std::cout << "Usage: " << argv[0] << " <save_dir> <m> <n> <error_percentage> " << std::endl;
-        std::cout << "Example: " << argv[0] << " data 5000 100000 0.01" << std::endl;
+        // std::cout << "Usage: " << argv[0] << " <save_dir> <m> <n> <error_percentage> " << std::endl;
+        std::cout << "Usage: " << argv[0] << " <save_directory> <t-alleles> <haplotypes_count> <SNPs_count> <wild_rate> " << std::endl;
+        std::cout << "Example: " << argv[0] << " data 3 5000 100000 3" << std::endl;
 
         return 1;
     }
     std::string save_dir = argv[1];
     save_dir.append("/");
-    int m = std::stoi(argv[2]);
-    int n = std::stoi(argv[3]);
-    int alphabet = 3;
+    int alphabet = std::stoi(argv[2]);
+    int m = std::stoi(argv[3]);
+    int n = std::stoi(argv[4]);
 
     std::string filename = "hap" + std::to_string(alphabet) + "_gen_" + std::to_string(m) + "_" + std::to_string(n);
     double error = 0;
     std::string filename_errors;
-    if (argc == 5)
+    if (argc == 6)
     {
         std::cout << "adding gaps" << std::endl;
-        error = std::stod(argv[4]) / 100;
+        error = std::stod(argv[5]) / 100;
         filename_errors = filename + "_wild_" + std::to_string(error * 100).substr(0, 5);
     }
     std::fstream ofs;
@@ -35,7 +36,7 @@ int main(int argc, char **argv)
     ofs.open(save_dir + filename, std::ofstream::out);
     ifs.open(save_dir + filename, std::ofstream::in);
 
-    if (argc == 5)
+    if (argc == 6)
         ofs_err.open(save_dir + filename_errors, std::ofstream::out);
     int seed = 0;
     seed = seed == 0 ? std::random_device()() : seed;
@@ -47,7 +48,7 @@ int main(int argc, char **argv)
         for (int j = 0; j < n; j++)
         {
             auto add = dis(gen);
-            if (argc == 5)
+            if (argc == 6)
             {
                 if (err(gen) < error)
                 {
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
         std::cout << "\rpourcent: " << (i * 100) / m << "%" << std::flush;
     }
     ofs.close();
-    if (argc == 5)
+    if (argc == 6)
         ofs_err.close();
     std::cout << std::endl
               << "added gaps: " << count << std::endl;

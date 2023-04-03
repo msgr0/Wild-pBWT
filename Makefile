@@ -5,7 +5,10 @@ wild-pbwt: bin/wild-pbwt
 gen: bin/gen
 err: bin/err
 
-CXXFLAGS ?= -O2 -march=native
+CXXFLAGS ?= -O2 -march=native 
+#uncomment next line if SDSL is intalled under user's home directory
+#CXXFLAGS ?= -O2 -march=native -I ~/include -L ~/lib
+
 
 LDLIBS += -lsdsl
 

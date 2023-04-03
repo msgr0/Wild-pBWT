@@ -19,16 +19,16 @@ int main(int argc, char **argv)
 
     if (argc != 4)
     {
-        std::cout << "Usage: " << argv[0] << " <out_file> <error_percentage> <input>" << std::endl;
-        std::cout << "Example: " << argv[0] << "matrix.bm 10 input.bm" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <input_matrix> <wild_rate> <path_to_output_matrix>" << std::endl;
+        std::cout << "Example: " << argv[0] << " data/input_matrix 3 data/output_matrix" << std::endl;
 
         return 1;
     }
 
-    std::string save_dir = argv[1];
+    std::string save_dir = argv[3];
 
     double error = std::stod(argv[2]) / 100.0;
-    std::string filename = argv[3];
+    std::string filename = argv[1];
 
     std::uniform_real_distribution<> err(0, 1);
 

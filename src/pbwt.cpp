@@ -12,7 +12,7 @@ typedef long long int int_t;
 
 // globals
 bool verbose = false;
-bool fast = false;
+bool count_blocks = false;
 bool output_blocks = false;
 int_t minimal_block_size = 2;
 
@@ -247,7 +247,7 @@ public:
                         if (diff != 0 || k >= N - 1)
                         {
                             dk_sup[m] = dk[i];
-                            if (fast)
+                            if (count_blocks)
                             {
                                 total_blocks += 1;
                             }
@@ -436,8 +436,10 @@ public:
 
 void usage()
 {
-    std::cerr << "Usage: ./bin/wild-pbwt -a <alphabet_size> -f <filename>";
-    std::cerr << "-c y <count max blocks> -o y <out_blocks to std_out> -b <min block size> -g <buffer_size:512> -v y <verbose> \n";
+    std::cerr << "Usage: ./bin/wild-pbwt \n";
+    std::cerr << "-a <alphabet_size> \n-f <filename> \n";
+    std::cerr << "-c y <count max blocks> \n-o y <out_blocks to std_out> \n";
+    std::cerr << "-b <min block size> -g <buffer_size:512> -v y <verbose> \n";
     std::cerr << "Example: ./bin/wild-pbwt -a 3 -f paper_wild -o y > paper_wild_out.txt \n";
     exit(0);
 }
@@ -449,10 +451,13 @@ int main(int argc, char **argv)
     allele_t alphabet_size;
     int_t buffer_size = 512;
 
-    while ((ch = getopt(argc, argv, "f:a:c:o:v:g:b:")) != -1)
+    while ((ch = getopt(argc, argv, "h:f:a:c:o:v:g:b:")) != -1)
     {
         switch (ch)
         {
+        case 'h':
+            usage();
+            break;
         case 'f':
             filename = optarg;
             break;
@@ -460,7 +465,7 @@ int main(int argc, char **argv)
             alphabet_size = atoi(optarg);
             break;
         case 'c':
-            fast = true;
+            count_blocks = true;
             break;
         case 'o':
             output_blocks = true;
