@@ -34,7 +34,7 @@ The `wild-pbwt` binary under the `bin` subfolder computes all the maximal haplot
 ./bin/wild-pbwt -f <filename> -a <t-alleles> [-c|-o y] [-v y] [-b <block_size>] [-g <buffer_size>]
 ```
 where:
-- `<filename>` is the input file containing the haplotype panel in ASCII format where each line represents a variation site and each column is a single haplotype (i.e., similar to VCFs). Wildcards are represented with character `*`.
+- `<filename>` is the input file containing the haplotype panel in ASCII format where each line represents a single haplotype and each column is a variation site. Wildcards are represented with character `*`.
 - `<t-alleles>` is the alphabet size (not counting `*`), i.e., the maximum number of alleles in a single site
 - `<block_size>` is the minimum block size required to count a maximal block. It defaults to 2. It requires the `-o` flag.
 - `<buffer_size>` is the buffer_size of the file stream buffer. No need to tweak this parameter in a normal use case. Adjusting this value according to the input column size could result in a performance improvement.
