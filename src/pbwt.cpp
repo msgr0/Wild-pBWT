@@ -265,15 +265,16 @@ public:
                                     total_blocks++;
                                     if (output_blocks)
                                     {
-
-                                        std::cout
-                                            << range * width << " (" << dk[i] << "-"
-                                            << k << "," << ak[m] << ":" << range << "): "; // \t{";
+//
+                                    //    std::cout
+                                    //        << range * width << " (" << dk[i] << "-"
+                                    //        << k << "," << ak[m] << ":" << range << ")\n"; // \t{";
+std::cout << "[";
                                         for (auto &b : b)
                                         {
                                             std::cout << b << ",";
                                         }
-                                        std::cout << "\n";
+std::cout << "], " << dk[i] << ", " << k << "\n";
                                     }
                                 }
                             }
