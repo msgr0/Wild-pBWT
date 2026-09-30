@@ -1,22 +1,9 @@
-#include "./MatrixReader.hpp"
-#include <iostream>
-#include <ostream>
-#include <random>
-#include <iostream>
 #include <fstream>
-#include <thread>
+#include <iostream>
+#include <random>
 
 int main(int argc, char **argv)
 {
-    int alphabet = 2;
-    std::fstream ofs;
-
-    long long int count = 0;
-
-    int seed = 0;
-    seed = seed == 0 ? std::random_device()() : seed;
-    std::mt19937 gen(seed);
-
     if (argc != 4)
     {
         std::cout << "Usage: " << argv[0] << " <input_matrix> <wild_rate> <path_to_output_matrix>" << std::endl;
@@ -25,44 +12,40 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    std::string save_dir = argv[3];
-
-    double error = std::stod(argv[2]) / 100.0;
     std::string filename = argv[1];
+    double error = std::stod(argv[2]) / 100.0;
+    std::string filename_errors = argv[3];
 
+    std::ifstream ifs(filename);
+    if (!ifs)
+    {
+        std::cerr << "Couldn't open file: " << filename << "\n";
+        return 1;
+    }
+    std::ofstream ofs(filename_errors);
+
+    std::mt19937 gen(std::random_device{}());
     std::uniform_real_distribution<> err(0, 1);
 
-    MatrixReader::Method method = MatrixReader::M_byCol;
-    MatrixReader matrix(filename, method);
-    int n = matrix.getColSize();
-    int m = matrix.getRowSize();
-
-    ofs.open(save_dir, std::ofstream::out);
-
-    for (int i = 0; i < m; i++)
+    long long int count = 0;
+    std::string row;
+    while (ifs >> row)
     {
-        auto column = matrix.getNextColumn();
-        for (int j = 0; j < n; j++)
+        for (char &c : row)
         {
             if (err(gen) < error)
             {
-                ofs << "*";
+                c = '*';
                 count++;
             }
-            else
-                ofs << column[j] + 0;
         }
-
-        ofs << std::endl;
-        std::cout << "\rpourcent: " << (i * 100) / m << "%" << std::flush;
+        ofs << row << "\n";
     }
-    ofs.close();
 
-    std::cout << std::endl
-              << "added gaps: " << count << std::endl;
+    std::cout << "added gaps: " << count << std::endl;
     std::cout << "filename: " << std::endl
               << filename << std::endl
               << "filename_errors: " << std::endl
-              << save_dir << std::endl;
+              << filename_errors << std::endl;
     return 0;
 }

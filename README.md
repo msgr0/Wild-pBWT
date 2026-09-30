@@ -37,7 +37,7 @@ where:
 - `<filename>` is the input file containing the haplotype panel in ASCII format where each line represents a single haplotype and each column is a variation site. Wildcards are represented with character `*`.
 - `<t-alleles>` is the alphabet size (not counting `*`), i.e., the maximum number of alleles in a single site
 - `<block_size>` is the minimum block size required to count a maximal block. It defaults to 2. It requires the `-o` flag.
-- `<buffer_size>` is the buffer_size of the file stream buffer. No need to tweak this parameter in a normal use case. Adjusting this value according to the input column size could result in a performance improvement.
+- `<buffer_size>` makes `wild-pbwt` read the input with one buffered file stream per haplotype (each with a buffer of `buffer_size` bytes, e.g. `512`) instead of mapping the whole file in memory, which is the default. Use it for panels that do not fit in memory. It needs one open file per haplotype.
 
 If ran with `-o` flag, blocks will be output to standard output. Blocks colud be saved to external file adding `> output_file.txt` at the end of the `wild-pbwt` command.
 
@@ -50,26 +50,17 @@ If ran with `-v` flag, the extended pBWT execution will be output to the standar
 
 ### `gen`
 
-The `gen` binary under the `bin` subfolder allows the user to generate a matrix M (haplotypes) x N (SNPs) with a specified wildcard rate.
+The `gen` binary under the `bin` subfolder allows the user to generate a plain random matrix M (haplotypes) x N (SNPs). To add missing data to it, run `err` on the result.
 ```sh
-./bin/gen <save_directory> <t-alleles> <haplotypes_count> <SNPs_count> <wild_rate> 
+./bin/gen <save_directory> <t-alleles> <haplotypes_count> <SNPs_count>
 ```
-If no `wild_rate` is given, a plain random matrix will be generated.
-
-If a `wild_rate` is given, a plain random matrix will be generated alongside a version of that matrix with missing data.
 
 Example:
 ```sh
 mkdir data
-./bin/gen data 3 1000 25000 5
-```
-Will generate 2 matrices under the newly created `data` folder, `tri-allelic` with `1000` haplotypes and `25000` SNPs; one with no missing data and a copy of the first one with 5\% missing data.
-
-Example, insted:
-```sh
 ./bin/gen data 2 1000 52000
 ```
-Will generate a matrix under `data` folder, `bi-allelic` with `1000` haplotypes and `52000` SNPs.
+Will generate a matrix under the newly created `data` folder, `bi-allelic` with `1000` haplotypes and `52000` SNPs.
 
 ---
 

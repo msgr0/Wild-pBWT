@@ -2,134 +2,92 @@
 #define __MATRIX_READER_HPP__
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <algorithm>
 #include <cassert>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <unistd.h>
-#include <cassert>
-#include <cstring>
-#include <iostream>
-#include <limits>
-#include <stack>
-#include <tuple>
-#include <vector>
 
-typedef std::vector<uint8_t> matrixType;
+typedef uint8_t allele_t;
+const allele_t WILD = allele_t('*' - '0');
 
+// class to read a matrix (one row per line) column by column
+// buffer_size == 0: mmap, the whole file ends up in the page cache
+// buffer_size > 0: one buffered stream per row, for panels that outgrow RAM (needs one open file per row)
 class MatrixReader
 {
-public:
-  enum Method
-  {
-    M_byCol, // assumes matrix is given columnwise
-    M_mmap   // read column on the fly by mmap
-  };
-  size_t currentCol;
-  bool byCol;
-  std::ifstream ifs;
-  std::vector<matrixType> matrix;
-  matrixType nextCol;
+  std::vector<allele_t> col;
   size_t rows;
   size_t cols;
-  enum Method method;
-
-  struct stat st;
-  int fd;
-  char *mat;
+  size_t size;
+  char *mat = NULL;
+  std::vector<std::ifstream> streams;
+  std::vector<std::vector<char>> buffers;
 
 public:
-  // class to read matrix from file
-  // givenByCol = true: assumes that the file is transposed
-  MatrixReader(const std::string &filename, enum Method m)
-      : currentCol(0), method(m)
+  MatrixReader(const std::string &filename, size_t buffer_size = 0)
   {
-    if (stat(filename.c_str(), &st))
+    auto fail = [&](const char *why)
     {
-      std::cerr << "Couldn't open file: " << filename << "\n";
+      std::cerr << why << ": " << filename << "\n";
       exit(1);
-    }
+    };
+    struct stat st;
+    std::ifstream ifs(filename);
     std::string s;
-    ifs.open(filename, std::ifstream::in);
-    ifs >> s;
-    ifs.close();
+    if (stat(filename.c_str(), &st) || !std::getline(ifs, s))
+      fail("Couldn't open file");
+    size = st.st_size;
     cols = s.size();
-    rows = st.st_size / (cols + 1) + ((st.st_size % (cols + 1) != 0) ? 1 : 0);
-    assert(st.st_size % (cols + 1) == 0 ||
-           st.st_size % (cols + 1) == cols); // might be missing last eol
+    rows = size / (cols + 1) + ((size % (cols + 1) != 0) ? 1 : 0);
+    assert(size % (cols + 1) == 0 ||
+           size % (cols + 1) == cols); // might be missing last eol
+    col.resize(rows);
 
-    switch (method)
+    if (buffer_size == 0)
     {
-    case M_byCol:
-      ifs.open(filename, std::ifstream::in);
-      break;
-    case M_mmap:
-      fd = open(filename.c_str(), O_RDONLY);
-      mat = static_cast<char *>(
-          mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0));
-      nextCol.resize(rows);
-      break;
+      int fd = open(filename.c_str(), O_RDONLY);
+      mat = static_cast<char *>(mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0));
+      close(fd);
+      if (mat == MAP_FAILED)
+        fail("Couldn't mmap file");
+      return;
     }
-  };
+
+    struct rlimit limit;
+    getrlimit(RLIMIT_NOFILE, &limit);
+    limit.rlim_cur = std::min<rlim_t>(limit.rlim_max, std::max<rlim_t>(limit.rlim_cur, rows + 64));
+    setrlimit(RLIMIT_NOFILE, &limit);
+
+    streams = std::vector<std::ifstream>(rows);
+    buffers.assign(rows, std::vector<char>(buffer_size));
+    for (size_t i = 0; i < rows; i++)
+    {
+      streams[i].rdbuf()->pubsetbuf(buffers[i].data(), buffer_size);
+      streams[i].open(filename);
+      streams[i].seekg((cols + 1) * i);
+      if (!streams[i])
+        fail("Couldn't open one stream per row (open files limit?), retry without -g");
+    }
+  }
+  ~MatrixReader()
+  {
+    if (mat)
+      munmap(mat, size);
+  }
   size_t getColSize() const { return cols; }
   size_t getRowSize() const { return rows; }
 
-  const matrixType &getNextColumn()
+  // with streams the columns come in file order, whatever c is
+  const allele_t *getColumn(size_t c)
   {
-    std::string s;
-    switch (method)
-    {
-    case M_byCol:
-      ifs >> s;
-      nextCol.resize(s.size());
-      for (size_t i = 0; i < s.size(); i++)
-        nextCol[i] = (s[i] == '1');
-      if (s.empty())
-        ifs.close();
-      return nextCol;
-      break;
-
-    case M_mmap:
-      if (currentCol < cols)
-      {
-        size_t off = currentCol;
-        for (size_t i = 0; i < rows; i++)
-        {
-          if (mat[off] == '*')
-          {
-            nextCol[i] = -1; // 255 uint
-          }
-          else
-          {
-            nextCol[i] = mat[off] - 48;
-          }
-          off += cols + 1;
-        }
-        currentCol++;
-        return nextCol;
-      }
-      else
-      {
-        nextCol.clear();
-        return nextCol;
-      }
-      return nextCol;
-      break;
-    }
-    return nextCol; // WARNING ==>  control reaches end of non-void function
-  };
-  ~MatrixReader()
-  {
-    switch (method)
-    {
-    case M_mmap:
-      munmap(static_cast<void *>(mat), st.st_size);
-      close(fd);
-      break;
-    default:
-      break;
-    }
+    for (size_t i = 0; i < rows; i++)
+      col[i] = (mat ? mat[c + i * (cols + 1)] : streams[i].rdbuf()->sbumpc()) - '0';
+    return col.data();
   }
 };
 #endif //__MATRIX_READER_HPP__
