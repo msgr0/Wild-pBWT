@@ -17,8 +17,32 @@ typedef long long int int_t;
 bool verbose = false;
 bool count_blocks = false;
 bool output_blocks = false;
+bool range_rows = false;   // -r y: write the rows of a block, sorted, as ranges: 1-8,10-13
 bool wild_columns = false; // -w y: blocks may span (and stop at) columns where all their rows have a wildcard
 int_t minimal_block_size = 2;
+
+// v >= 0 in decimal at the end of s, two digits at a time
+void append_number(std::string &s, int_t v)
+{
+    static const char pairs[] = "00010203040506070809101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899";
+    char digits[24];
+    int n = sizeof(digits);
+    for (; v >= 100; v /= 100)
+    {
+        n -= 2;
+        digits[n] = pairs[2 * (v % 100)];
+        digits[n + 1] = pairs[2 * (v % 100) + 1];
+    }
+    if (v >= 10)
+    {
+        n -= 2;
+        digits[n] = pairs[2 * v];
+        digits[n + 1] = pairs[2 * v + 1];
+    }
+    else
+        digits[--n] = '0' + v;
+    s.append(digits + n, sizeof(digits) - n);
+}
 
 class PbwtOrder
 {
@@ -35,6 +59,8 @@ private:
     std::vector<std::vector<int_t>> count; // count[l][x]: entries ak[0..x-1] with allele l on the next column
     std::vector<std::vector<uint64_t>> wild_row; // per row, one bit per column so far: is it a wildcard
     std::vector<int_t> block_rows;
+    std::vector<uint64_t> row_bits; // one bit per row, all 0 between two uses (see print_block)
+    std::string line;
     std::vector<int_t> in_block; // per row, last block/group it was seen in (see maximal_rows)
     std::vector<int_t> in_group;
     int_t stamp = 0;
@@ -54,7 +80,7 @@ public:
     int_t collapse_count = 0;
 
     PbwtOrder(const allele_t *r, int_t lines, allele_t alphabet_size)
-        : ak(lines), dk(lines, 0), wild_row(lines), in_block(lines, 0), in_group(lines, 0), where(lines), M(lines), column_pointer(r), alphabet_size(alphabet_size)
+        : ak(lines), dk(lines, 0), wild_row(lines), row_bits((lines + 63) / 64), in_block(lines, 0), in_group(lines, 0), where(lines), M(lines), column_pointer(r), alphabet_size(alphabet_size)
     {
         std::iota(ak.begin(), ak.end(), 0);
     }
@@ -201,6 +227,98 @@ public:
         return range;
     }
 
+    // Writes the block from column d to column k, in one line: [rows], d, k. The rows are the ones
+    // in block_rows, or, if from_entries, the rows of the entries ak[m..n] (some more than once).
+    // They are listed as they come (1,5,2,), or with -r y sorted, with the runs of consecutive
+    // rows as ranges (1-2,5). To sort a few rows is cheap, for many a bit per row is set and the
+    // bits are read in order, a word at a time, what takes O(rows + M / 64) and not O(rows log rows).
+    void print_block(int_t d, int_t m, int_t n, bool from_entries)
+    {
+        line.assign(1, '[');
+        if (!range_rows)
+        {
+            for (int_t r : block_rows)
+            {
+                append_number(line, r);
+                line.push_back(',');
+            }
+        }
+        else
+        {
+            const int_t *first_row = from_entries ? &ak[m] : block_rows.data();
+            const int_t *end_row = from_entries ? &ak[n] + 1 : block_rows.data() + block_rows.size();
+            bool first = true;
+            auto write_run = [&](int_t from, int_t to)
+            {
+                if (!first)
+                    line.push_back(',');
+                first = false;
+                append_number(line, from);
+                if (to > from)
+                {
+                    line.push_back('-');
+                    append_number(line, to);
+                }
+            };
+            int_t from = -1, to = -2;
+            if (size_t(end_row - first_row) * 32 <= row_bits.size())
+            {
+                block_rows.assign(first_row, end_row);
+                std::sort(block_rows.begin(), block_rows.end());
+                block_rows.erase(std::unique(block_rows.begin(), block_rows.end()), block_rows.end());
+                for (int_t r : block_rows)
+                {
+                    if (r == to + 1)
+                    {
+                        to = r;
+                        continue;
+                    }
+                    if (from >= 0)
+                        write_run(from, to);
+                    from = to = r;
+                }
+            }
+            else
+            {
+                for (const int_t *r = first_row; r != end_row; r++)
+                {
+                    row_bits[*r >> 6] |= uint64_t(1) << (*r & 63);
+                }
+                for (size_t w = 0; w < row_bits.size(); w++)
+                {
+                    uint64_t bits = row_bits[w];
+                    row_bits[w] = 0;
+                    while (bits)
+                    {
+                        int first_bit = __builtin_ctzll(bits);
+                        uint64_t ones = bits >> first_bit; // the run of 1s that starts at first_bit
+                        int length = ~ones ? __builtin_ctzll(~ones) : 64;
+                        int_t start = int_t(w) * 64 + first_bit;
+                        if (start == to + 1)
+                        {
+                            to = start + length - 1;
+                        }
+                        else
+                        {
+                            if (from >= 0)
+                                write_run(from, to);
+                            from = start;
+                            to = start + length - 1;
+                        }
+                        bits = first_bit + length >= 64 ? 0 : bits & ~(((uint64_t(1) << length) - 1) << first_bit);
+                    }
+                }
+            }
+            write_run(from, to);
+        }
+        line += "], ";
+        append_number(line, d);
+        line += ", ";
+        append_number(line, k);
+        line.push_back('\n');
+        std::cout.write(line.data(), line.size());
+    }
+
     // A block found on the entries ak[m..n], which match from column d to column k, and where
     // the ties are the positions inside (m, n] with dk == d.
     void report_block(int_t m, int_t n, int_t d, const int_t *ties, int_t ties_count)
@@ -214,6 +332,7 @@ public:
                 return;
         }
         int_t range = 0;
+        bool from_entries = false;
         if (wild_columns)
         {
             if (d > 0 && previous_alleles(m, n, d, ties, ties_count) < 2)
@@ -226,24 +345,21 @@ public:
         {
             if (!williams_mumey_block(m, n, d, ties, ties_count))
                 return;
-            if (!count_blocks)
+            // the rows of the ranges can be read from the entries, unless -b needs to know how many
+            from_entries = range_rows && minimal_block_size <= 2;
+            if (!count_blocks && !from_entries)
                 range = collect_rows(m, n);
         }
         if (count_blocks)
         {
             total_blocks += 1;
         }
-        else if ((k - d + 1) * range >= minimal_block_size)
+        else if (from_entries || (k - d + 1) * range >= minimal_block_size)
         {
             total_blocks++;
             if (output_blocks)
             {
-                std::cout << "[";
-                for (int_t r : block_rows)
-                {
-                    std::cout << r << ",";
-                }
-                std::cout << "], " << d << ", " << k << "\n";
+                print_block(d, m, n, from_entries);
             }
         }
     }
@@ -467,6 +583,7 @@ void usage()
     std::cerr << "-a <alphabet_size> \n-f <filename> <a matrix, or a .vcf .vcf.gz .bcf file, or - for a VCF/BCF on stdin> \n";
     std::cerr << "-t y <the matrix is transposed: one line per site, one character per haplotype; - is stdin> \n";
     std::cerr << "-c y <count max blocks> \n-o y <out_blocks to std_out> \n";
+    std::cerr << "-r y <as -o, with the rows sorted and consecutive rows as ranges: 1-8,10-13> \n";
     std::cerr << "-b <min block size> -v y <verbose> \n";
     std::cerr << "-g <buffer_size> <read with one buffered stream per row instead of mmap> \n";
     std::cerr << "-w y <blocks may span columns where all their rows have a wildcard, each block once>\n";
@@ -495,7 +612,9 @@ int main(int argc, char **argv)
     int_t buffer_size = 0;
     bool transposed = false;
 
-    while ((ch = getopt(argc, argv, "hf:a:c:o:v:w:t:g:b:")) != -1)
+    std::ios::sync_with_stdio(false); // the blocks are written with cout only, and there can be very many
+
+    while ((ch = getopt(argc, argv, "hf:a:c:o:r:v:w:t:g:b:")) != -1)
     {
         switch (ch)
         {
@@ -512,6 +631,10 @@ int main(int argc, char **argv)
             count_blocks = true;
             break;
         case 'o':
+            output_blocks = true;
+            break;
+        case 'r':
+            range_rows = true;
             output_blocks = true;
             break;
         case 'v':

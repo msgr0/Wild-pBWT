@@ -29,7 +29,7 @@ For example run `make wild-pbwt` to only build `wild-pbwt` tool.
 The `wild-pbwt` binary under the `bin` subfolder computes all the maximal haplotype blocks with wildcards from a given input, with the extended pBWT
 
 ```sh
-./bin/wild-pbwt -f <filename> -a <t-alleles> [-c|-o y] [-v y] [-b <block_size>] [-g <buffer_size>] [-w y] [-t y]
+./bin/wild-pbwt -f <filename> -a <t-alleles> [-c|-o y|-r y] [-v y] [-b <block_size>] [-g <buffer_size>] [-w y] [-t y]
 ```
 where:
 - `<filename>` is the input file containing the haplotype panel in ASCII format where each line represents a single haplotype and each column is a variation site. Wildcards are represented with character `*`. All the lines must have the same number of characters (no spaces, no Windows `\r`), and a character that is neither `*` nor a digit below `-a` stops the run, saying in which haplotype and column it is. A file ending in `.vcf`, `.vcf.gz`, `.vcf.bgz` or `.bcf`, or `-` for a VCF/BCF on the standard input, is read as a VCF/BCF (see below).
@@ -66,7 +66,9 @@ With `-t y` a matrix file is read by columns instead of by haplotypes: line `c` 
 ```
 is the file `00`, `11`, `01`, `10` when transposed.
 
-If ran with `-o` flag, blocks will be output to standard output. Blocks colud be saved to external file adding `> output_file.txt` at the end of the `wild-pbwt` command.
+If ran with `-o` flag, blocks will be output to standard output. Blocks colud be saved to external file adding `> output_file.txt` at the end of the `wild-pbwt` command. A block is a line `[rows], first column, last column`, with rows and columns counted from 0, for example `[0,1,3,4,], 0, 2` for haplotypes 0, 1, 3 and 4 on columns 0 to 2. The rows are in no particular order.
+
+If ran with `-r y` instead, the blocks are output in the same way but with the rows sorted and the runs of consecutive rows written as ranges, and without the final comma: `[0-1,3-4], 0, 2`. When many of the haplotypes of a block are neighbours in the panel, as in a panel with many similar haplotypes, this is much shorter (and quicker to write: on a panel of 500,000 haplotypes with 377,447 blocks the output went from 5.4 GB to 2.3 GB, and the run from 35 to 6 seconds).
 
 If ran with `-c` flag, blocks will not be output, only counted.<br>
 To specify a block_size, run with `-o` (`-c` not permitted).

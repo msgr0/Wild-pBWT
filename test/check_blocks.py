@@ -75,13 +75,22 @@ def run(binary, path, t, strict, *extra):
     flags = [] if strict else ["-w", "y"]
     r = subprocess.run([binary, "-f", path, "-a", str(t), "-o", "y", *flags, *extra], capture_output=True, text=True)
     c = subprocess.run([binary, "-f", path, "-a", str(t), "-c", "y", *flags], capture_output=True, text=True)
-    assert r.returncode == 0 and c.returncode == 0, r.stderr[-300:]
+    g = subprocess.run([binary, "-f", path, "-a", str(t), "-r", "y", *flags, *extra], capture_output=True, text=True)
+    assert r.returncode == 0 and c.returncode == 0 and g.returncode == 0, r.stderr[-300:]
     blocks = []
     for line in r.stdout.splitlines():
         rows, i, j = line.rsplit(", ", 2)
         blocks.append((sum(1 << int(x) for x in rows.strip("[],").split(",")), int(i), int(j)))
-    for out in (r, c):
+    for out in (r, c, g):
         assert f"total_blocks_found\t{len(blocks)}\n" in out.stderr, "the count does not match the blocks output"
+    # -r y: the same blocks in the same order, the rows sorted, written as maximal ranges
+    ranged = g.stdout.splitlines()
+    assert len(ranged) == len(blocks), "-r y writes other blocks"
+    for line, (mask, i, j) in zip(ranged, blocks):
+        rows, ri, rj = line.rsplit(", ", 2)
+        runs = [tuple(map(int, item.partition("-")[::2])) if "-" in item else (int(item), int(item)) for item in rows.strip("[]").split(",")]
+        assert all(a <= b for a, b in runs) and all(runs[x][1] + 1 < runs[x + 1][0] for x in range(len(runs) - 1)), ("ranges not sorted or not maximal", line)
+        assert (sum(1 << x for a, b in runs for x in range(a, b + 1)), int(ri), int(rj)) == (mask, i, j), ("-r y differs from -o y", line)
     return blocks
 
 
