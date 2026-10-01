@@ -6,11 +6,16 @@ gen: bin/gen
 err: bin/err
 
 CXXFLAGS ?= -O2 -march=native
-#uncomment next line if SDSL is intalled under user's home directory
-#CXXFLAGS ?= -O2 -march=native -I ~/include -L ~/lib
 
 CPPFLAGS += -MMD
-LDLIBS += -lsdsl
+
+# VCF/BCF input needs htslib: found with pkg-config, or make HTSLIB=1 with the flags in CPPFLAGS and LDLIBS
+# (-I/-L and -lhts), or make HTSLIB=0 to leave it out
+HTSLIB ?= $(shell pkg-config --exists htslib 2>/dev/null && echo 1)
+ifeq ($(HTSLIB),1)
+src/pbwt.o bin/wild-pbwt: CPPFLAGS += -DWITH_HTSLIB $(shell pkg-config --cflags htslib 2>/dev/null)
+bin/wild-pbwt: LDLIBS += $(shell pkg-config --libs htslib 2>/dev/null || echo -lhts)
+endif
 
 bin/gen: src/hap_gen.o
 bin/err: src/hap_wild.o
